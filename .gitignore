@@ -2,5 +2,11 @@
 __pycache__/ 
 *.pyc 
 .env 
+.env.* 
 data/*.csv 
-.DS_Store
+.DS_Store 
+.idea/ 
+.vscode/ 
+*.log 
+.pytest_cache/ 
+.ipynb_checkpoints/
