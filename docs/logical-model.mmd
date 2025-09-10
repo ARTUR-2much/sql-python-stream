@@ -1,0 +1,82 @@
+erDiagram
+  USERS {
+    int user_id PK
+    text email UK
+    text full_name
+    text country_code FK
+    timestamptz registered_at
+  }
+  COUNTRIES {
+    text country_code PK
+    text country_name
+  }
+  DEVICES {
+    int device_id PK
+    text device_type
+  }
+  USER_DEVICES {
+    int user_id FK
+    int device_id FK
+    timestamptz bound_at
+    PK user_id, device_id
+  }
+  CONTENT {
+    int content_id PK
+    text title
+    int release_year
+    text age_rating
+  }
+  GENRES {
+    int genre_id PK
+    text genre_name UK
+  }
+  CONTENT_GENRES {
+    int content_id FK
+    int genre_id FK
+    PK content_id, genre_id
+  }
+  SUBSCRIPTION_PLAN_SCD2 {
+    text plan_code
+    int version_num
+    text plan_name
+    numeric price
+    timestamptz valid_from
+    timestamptz valid_to
+    bool is_current
+    PK plan_code, version_num
+  }
+  SUBSCRIPTIONS {
+    int subscription_id PK
+    int user_id FK
+    text plan_code FK
+    int version_num FK
+    timestamptz started_at
+    timestamptz ended_at
+  }
+  WATCH_EVENTS {
+    bigint event_id PK
+    int user_id FK
+    int content_id FK
+    int device_id FK
+    timestamptz watched_at
+    int watch_seconds
+  }
+  RATINGS {
+    int user_id FK
+    int content_id FK
+    smallint rating
+    timestamptz rated_at
+    PK user_id, content_id
+  }
+
+  USERS ||--o{ USER_DEVICES : has
+  DEVICES ||--o{ USER_DEVICES : linked
+  USERS ||--o{ SUBSCRIPTIONS : has
+  SUBSCRIPTION_PLAN_SCD2 ||--o{ SUBSCRIPTIONS : version
+  CONTENT ||--o{ CONTENT_GENRES : categorized
+  GENRES ||--o{ CONTENT_GENRES : contains
+  USERS ||--o{ WATCH_EVENTS : produces
+  CONTENT ||--o{ WATCH_EVENTS : watched
+  USERS ||--o{ RATINGS : rates
+  CONTENT ||--o{ RATINGS : is_rated
+  COUNTRIES ||--o{ USERS : resides

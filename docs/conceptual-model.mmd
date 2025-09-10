@@ -1,0 +1,11 @@
+erDiagram
+    USERS ||--o{ SUBSCRIPTIONS : has
+    USERS ||--o{ WATCH_EVENTS : produces
+    USERS ||--o{ RATINGS : rates
+    USERS ||--o{ USER_DEVICES : owns
+    DEVICES ||--o{ USER_DEVICES : linked
+    CONTENT ||--o{ WATCH_EVENTS : watched
+    CONTENT ||--o{ RATINGS : rated
+    CONTENT ||--o{ CONTENT_GENRES : categorized
+    GENRES ||--o{ CONTENT_GENRES : contains
+    SUBSCRIPTION_PLAN_SCD2 ||--o{ SUBSCRIPTIONS : describes
