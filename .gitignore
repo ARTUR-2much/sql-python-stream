@@ -3,6 +3,7 @@ __pycache__/
 *.pyc 
 .env 
 .env.* 
+!.env.example
 data/*.csv 
 .DS_Store 
 .idea/ 
