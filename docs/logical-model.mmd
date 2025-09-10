@@ -15,10 +15,9 @@ erDiagram
     text device_type
   }
   USER_DEVICES {
-    int user_id FK
-    int device_id FK
+    int user_id PK
+    int device_id PK
     timestamptz bound_at
-    PK user_id, device_id
   }
   CONTENT {
     int content_id PK
@@ -31,19 +30,17 @@ erDiagram
     text genre_name UK
   }
   CONTENT_GENRES {
-    int content_id FK
-    int genre_id FK
-    PK content_id, genre_id
+    int content_id PK
+    int genre_id PK
   }
   SUBSCRIPTION_PLAN_SCD2 {
-    text plan_code
-    int version_num
+    text plan_code PK
+    int version_num PK
     text plan_name
     numeric price
     timestamptz valid_from
     timestamptz valid_to
     bool is_current
-    PK plan_code, version_num
   }
   SUBSCRIPTIONS {
     int subscription_id PK
@@ -62,11 +59,10 @@ erDiagram
     int watch_seconds
   }
   RATINGS {
-    int user_id FK
-    int content_id FK
+    int user_id PK
+    int content_id PK
     smallint rating
     timestamptz rated_at
-    PK user_id, content_id
   }
 
   USERS ||--o{ USER_DEVICES : has
