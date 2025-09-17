@@ -1,0 +1,41 @@
+stages: [ddl, seed, queries]
+
+default:
+  image: python:3.11
+  services:
+    - name: postgres:16
+      alias: db
+  variables:
+    POSTGRES_DB: mini_stream
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: $PGPASSWORD       # задаётся в переменных CI
+    DATABASE_URL: "postgresql://postgres:${PGPASSWORD}@db:5432/mini_stream"
+
+ddl:
+  stage: ddl
+  rules:
+    - exists:
+        - scripts/10_tables.sql
+        - scripts/20_indexes.sql
+  before_script:
+    - pip install -r requirements.txt
+    - apt-get update && apt-get install -y postgresql-client
+  script:
+    - psql "$DATABASE_URL" -f scripts/10_tables.sql
+    - psql "$DATABASE_URL" -f scripts/20_indexes.sql
+
+seed:
+  stage: seed
+  rules:
+    - exists:
+        - scripts/30_seed_static.sql
+  script:
+    - psql "$DATABASE_URL" -f scripts/30_seed_static.sql
+
+queries:
+  stage: queries
+  rules:
+    - exists:
+        - src/run_queries.py
+  script:
+    - python src/run_queries.py

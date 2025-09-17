@@ -1,0 +1,33 @@
+name: CI
+on: [push, pull_request]
+
+env:
+  DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@localhost:5432/mini_stream
+
+jobs:
+  ddl:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: mini_stream
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.PGPASSWORD }}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres -d mini_stream"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Run DDL (10_tables) if present
+        if: ${{ hashFiles('scripts/10_tables.sql') != '' }}
+        run: psql "$DATABASE_URL" -f scripts/10_tables.sql
+      - name: Run indexes (20_indexes) if present
+        if: ${{ hashFiles('scripts/20_indexes.sql') != '' }}
+        run: psql "$DATABASE_URL" -f scripts/20_indexes.sql
