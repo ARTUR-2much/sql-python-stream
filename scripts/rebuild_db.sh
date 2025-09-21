@@ -1,14 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export $(grep -E '^DATABASE_URL=' "$ROOT/.env" | tr -d '\r') || true
-[[ -z "${DATABASE_URL:-}" ]] && echo "[ERR] DATABASE_URL not set in .env" && exit 1
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/00_reset_schema.sql"
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/10_tables.sql"
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/20_indexes.sql"
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/30_seed_static.sql"
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/31_seed_users.sql"
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/32_seed_links.sql"
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/33_seed_facts.sql"
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$ROOT/scripts/99_smoke.sql"
-echo "[OK] DB rebuilt successfully"
+
+# загрузим .env
+if [ -f ".env" ]; then
+  # shellcheck disable=SC2046
+  export $(grep -v '^#' .env | xargs)
+fi
+
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "ERROR: DATABASE_URL is empty. Fill .env first."
+  exit 1
+fi
+
+command -v psql >/dev/null 2>&1 || { echo "ERROR: psql not found in PATH"; exit 1; }
+
+STEPS=(
+  scripts/00_reset_schema.sql
+  scripts/10_tables.sql
+  scripts/20_indexes.sql
+  scripts/30_seed_static.sql
+  scripts/31_seed_users.sql
+  scripts/32_seed_links.sql
+  scripts/33_seed_facts.sql
+  scripts/99_smoke.sql
+)
+
+for s in "${STEPS[@]}"; do
+  echo "===== Running $s ====="
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$s"
+done
+
+echo "SUCCESS"

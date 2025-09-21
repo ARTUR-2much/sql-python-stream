@@ -86,7 +86,7 @@
 ```bash
 python -m venv .venv
 # Windows:
-.\.venv\Scripts ctivate
+.\.venv\Scripts\activate
 # Linux/Mac:
 # source .venv/bin/activate
 pip install -r requirements.txt
@@ -94,6 +94,16 @@ pip install -r requirements.txt
 copy .env.example .env
 # Linux/Mac:
 # cp .env.example .env
+
+Если `psql` не найден (Windows):
+1) Установите PostgreSQL с «Command Line Tools».
+2) На эту сессию CMD добавьте путь:
+    ```
+    set "PATH=C:\Program Files\PostgreSQL\16\bin;%PATH%"
+    ```
+    (подставьте вашу версию 15/16/17)
+3) Проверка: `where psql`
+
 ```
 
 ### 2) Указать пароль
@@ -104,13 +114,16 @@ DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/mini_stream
 
 ### 3) Пересобрать БД одной командой
 **Windows:**
-```bat
-scripts
-ebuild_db.bat
+```
+scripts\rebuild_db.bat
 ```
 **Linux/Mac:**
 ```bash
 bash scripts/rebuild_db.sh
+
+**Нет psql?** Можно пересобрать через Python:
+python scripts\rebuild_db.py
+
 ```
 Скрипты выполняют: сброс схемы → DDL (`10_tables.sql`, `20_indexes.sql`) → сиды (`30..33`) → smoke (`99_smoke.sql`). При ошибке процесс останавливается.
 
@@ -163,8 +176,12 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/99_smoke.sql
 ---
 
 ## CI (GitHub Actions / GitLab)
-- **GitHub Actions**: `.github/workflows/ci.yml` поднимает одноразовый контейнер PostgreSQL на раннере, выполняет `10/20/30/31/32/33/99`. Пароль БД передаётся через Secret `PGPASSWORD`.
-- **GitLab**: `.gitlab-ci.yml` приложен для соответствия ТЗ (на GitHub не исполняется).
+**GitHub Actions:**
+1) Settings → Secrets and variables → Actions → New repository secret:
+   - Name: `PGPASSWORD`
+   - Value: пароль для контейнера (используется в workflow).
+2) Запустите workflow на ветке `main` — он поднимет контейнер Postgres и выполнит 10/20/30/31/32/33/99.
+3) **GitLab**: `.gitlab-ci.yml` приложен для соответствия ТЗ (на GitHub не исполняется).
 
 > CI работает только с контейнерной БД на раннере и не взаимодействует с вашей локальной установкой.
 
