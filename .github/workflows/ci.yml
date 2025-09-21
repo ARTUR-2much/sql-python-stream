@@ -1,49 +1,60 @@
-name: CI (DDL + seed + smoke)
+name: CI
 
 on:
   push:
-    paths:
-      - 'scripts/**'
-      - '.github/workflows/ci.yml'
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:16
-        alias: db
         env:
-          POSTGRES_DB: mini_stream
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: ${{ secrets.PGPASSWORD }}
+          POSTGRES_DB: mini_stream
+        ports:
+          - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d mini_stream"
-          --health-interval 5s --health-timeout 5s --health-retries 30
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@localhost:5432/mini_stream
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install psql client
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Postgres client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Run DDL
-        env:
-          DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@db:5432/mini_stream
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres && break
+            echo "waiting for db..."; sleep 2
+          done
+
+      - name: Smoke: server version
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT version();"
+
+      - name: DDL
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/10_tables.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/20_indexes.sql
-      - name: Seed data
-        env:
-          DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@db:5432/mini_stream
+
+      - name: Seed
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/30_seed_static.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/31_seed_users.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/32_seed_links.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/33_seed_facts.sql
-      - name: Smoke checks
-        env:
-          DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@db:5432/mini_stream
+
+      - name: Smoke tests
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/99_smoke.sql
