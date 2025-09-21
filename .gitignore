@@ -11,3 +11,7 @@ data/*.csv
 *.log 
 .pytest_cache/ 
 .ipynb_checkpoints/
+## query outputs
+data/out/*
+!data/out/.gitkeep
+data/out/_errors.log

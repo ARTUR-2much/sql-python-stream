@@ -23,3 +23,11 @@
    python -m venv .venv
    .\.venv\Scripts\activate
    pip install -r requirements.txt
+
+
+
+	
+			### Выгрузка результатов запросов (День 7)
+1) .\.venv\Scripts\activate
+2) python src\run_queries.py
+CSV → data/out/*.csv (не коммитятся; в репозитории только data/out/.gitkeep)
