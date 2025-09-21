@@ -6,50 +6,52 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     services:
-      postgres:
+      db:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: ${{ secrets.PGPASSWORD }}
           POSTGRES_DB: mini_stream
         ports:
-          - 5432:5432
+          - "5432:5432"
         options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     env:
-      DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@localhost:5432/mini_stream
+      DATABASE_URL: "postgresql://postgres:${{ secrets.PGPASSWORD }}@localhost:5432/mini_stream"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Postgres client
+      - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Wait for Postgres
+      - name: Wait for Postgres to be healthy
+        shell: bash
         run: |
-          for i in {1..30}; do
-            pg_isready -h localhost -p 5432 -U postgres && break
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5432 -U postgres && exit 0
             echo "waiting for db..."; sleep 2
           done
+          echo "Postgres not ready in time"; exit 1
 
-      - name: Smoke: server version
+      - name: Show server version
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT version();"
 
-      - name: DDL
+      - name: Run DDL
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/10_tables.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/20_indexes.sql
 
-      - name: Seed
+      - name: Seed data
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/30_seed_static.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/31_seed_users.sql
