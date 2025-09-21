@@ -1,33 +1,49 @@
-name: CI
-on: [push, pull_request]
+name: CI (DDL + seed + smoke)
 
-env:
-  DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@localhost:5432/mini_stream
+on:
+  push:
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
 
 jobs:
-  ddl:
+  build:
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
+        alias: db
         env:
           POSTGRES_DB: mini_stream
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: ${{ secrets.PGPASSWORD }}
-        ports: ["5432:5432"]
         options: >-
-          --health-cmd="pg_isready -U postgres -d mini_stream"
-          --health-interval=5s --health-timeout=5s --health-retries=10
+          --health-cmd "pg_isready -U postgres -d mini_stream"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - run: pip install -r requirements.txt
-      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Run DDL (10_tables) if present
-        if: ${{ hashFiles('scripts/10_tables.sql') != '' }}
-        run: psql "$DATABASE_URL" -f scripts/10_tables.sql
-      - name: Run indexes (20_indexes) if present
-        if: ${{ hashFiles('scripts/20_indexes.sql') != '' }}
-        run: psql "$DATABASE_URL" -f scripts/20_indexes.sql
+          python-version: '3.11'
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Run DDL
+        env:
+          DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@db:5432/mini_stream
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/10_tables.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/20_indexes.sql
+      - name: Seed data
+        env:
+          DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@db:5432/mini_stream
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/30_seed_static.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/31_seed_users.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/32_seed_links.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/33_seed_facts.sql
+      - name: Smoke checks
+        env:
+          DATABASE_URL: postgresql://postgres:${{ secrets.PGPASSWORD }}@db:5432/mini_stream
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/99_smoke.sql

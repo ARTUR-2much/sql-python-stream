@@ -1,41 +1,24 @@
-stages: [ddl, seed, queries]
+stages: [build]
 
-default:
-  image: python:3.11
-  services:
-    - name: postgres:16
-      alias: db
-  variables:
-    POSTGRES_DB: mini_stream
-    POSTGRES_USER: postgres
-    POSTGRES_PASSWORD: $PGPASSWORD       # задаётся в переменных CI
-    DATABASE_URL: "postgresql://postgres:${PGPASSWORD}@db:5432/mini_stream"
+variables:
+  POSTGRES_DB: mini_stream
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: $PGPASSWORD
 
-ddl:
-  stage: ddl
-  rules:
-    - exists:
-        - scripts/10_tables.sql
-        - scripts/20_indexes.sql
-  before_script:
-    - pip install -r requirements.txt
+services:
+  - name: postgres:16
+    alias: db
+
+build:
+  stage: build
+  image: postgres:16
+  script:
     - apt-get update && apt-get install -y postgresql-client
-  script:
-    - psql "$DATABASE_URL" -f scripts/10_tables.sql
-    - psql "$DATABASE_URL" -f scripts/20_indexes.sql
-
-seed:
-  stage: seed
-  rules:
-    - exists:
-        - scripts/30_seed_static.sql
-  script:
-    - psql "$DATABASE_URL" -f scripts/30_seed_static.sql
-
-queries:
-  stage: queries
-  rules:
-    - exists:
-        - src/run_queries.py
-  script:
-    - python src/run_queries.py
+    - export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB"
+    - psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/10_tables.sql
+    - psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/20_indexes.sql
+    - psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/30_seed_static.sql
+    - psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/31_seed_users.sql
+    - psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/32_seed_links.sql
+    - psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/33_seed_facts.sql
+    - psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/99_smoke.sql
