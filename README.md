@@ -1,3 +1,6 @@
+[![CI](https://github.com/ARTUR-2much/sql-python-stream/actions/workflows/ci.yml/badge.svg)](https://github.com/ARTUR-2much/sql-python-stream/actions/workflows/ci.yml)
+
+
 # Mini Streaming — SQL + Python
 
 Учебный мини-стриминг: пользователи смотрят контент, ставят оценки и оформляют подписки. Тарифы ведём с историей версий (**SCD2**) — можем корректно отвечать на вопрос «что действовало на дату X».
