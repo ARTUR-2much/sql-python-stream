@@ -20,29 +20,32 @@ JOIN LATERAL (
   LIMIT 1
 ) cp ON TRUE;
 
--- subscriptions: создаём корректные интервалы (ended_at >= started_at)
+-- subscriptions: корректные интервалы (ended_at >= started_at)
 WITH pairs AS (
-  -- тут как у тебя было: откуда берём пары пользователей/планов
-  SELECT p.user_id, p.plan_code, p.version_num
+  /* 80 случайных пользователей + случайная версия плана */
+  SELECT
+    u.user_id,               -- ВАЖНО: user_id идёт из u, а не из p
+    p.plan_code,
+    p.version_num
   FROM (
-    SELECT u.user_id
-    FROM users u
+    SELECT user_id
+    FROM users
     ORDER BY random()
     LIMIT 80
-  ) u
+  ) AS u
   JOIN LATERAL (
     SELECT plan_code, version_num
     FROM subscription_plan_scd2
     ORDER BY random()
     LIMIT 1
-  ) p ON true
+  ) AS p ON true
 ),
 dated AS (
   SELECT
     user_id,
     plan_code,
     version_num,
-    /* старт: от 30 до 120 дней назад */
+    /* старт: 30..120 дней назад */
     (now() - ((30 + floor(random()*90))::int || ' days')::interval) AS started_at
   FROM pairs
 )
@@ -52,9 +55,9 @@ SELECT
   d.plan_code,
   d.version_num,
   d.started_at,
-  /* 50% активная подписка, иначе закончилась 1..60 дней спустя */
+  /* 50% активных (NULL), иначе закончилась 1..60 дней ПОСЛЕ старта */
   CASE WHEN random() < 0.5 THEN NULL
        ELSE d.started_at + ((1 + floor(random()*60))::int || ' days')::interval
   END AS ended_at
-FROM dated d
+FROM dated AS d
 ON CONFLICT DO NOTHING;
